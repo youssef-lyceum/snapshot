@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterator
 
 from kubernetes import client
+from kubernetes import watch
 from kubernetes.client import ApiException
 from kubernetes.stream import stream
 
@@ -212,6 +213,19 @@ def delete_pod(namespace: str, name: str) -> bool:
         if exc.status == 404:
             return False
         raise
+
+
+def watch_pod(
+    namespace: str, name: str, resource_version: str, timeout: int
+) -> Iterator[dict[str, Any]]:
+    """Yield the Pod's watch events after resource_version, for timeout seconds."""
+    yield from watch.Watch().stream(
+        client.CoreV1Api().list_namespaced_pod,
+        namespace=namespace,
+        field_selector=f"metadata.name={name}",
+        resource_version=resource_version,
+        timeout_seconds=timeout,
+    )
 
 
 def pod_logs(
